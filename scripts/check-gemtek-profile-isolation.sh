@@ -12,6 +12,7 @@ EOF
 config_file=""
 kernel_config=""
 manifests=()
+legacy_ubi15=0
 
 while (( $# > 0 )); do
 	case "$1" in
@@ -41,14 +42,14 @@ done
 	echo "kernel config not found: $kernel_config" >&2
 	exit 1
 }
-for manifest in "${manifests[@]}"; do
+for manifest in ${manifests[@]+"${manifests[@]}"}; do
 	[[ -f "$manifest" ]] || {
 		echo "manifest not found: $manifest" >&2
 		exit 1
 	}
 done
 
-if grep -Eq '^CONFIG_(TARGET_airoha_an7581_DEVICE|TARGET_DEVICE_airoha_an7581_DEVICE)_gemtek_xr1710g(-ubi)?=y$' "$config_file"; then
+if grep -Eq '^CONFIG_(TARGET_airoha_an7581_DEVICE|TARGET_DEVICE_airoha_an7581_DEVICE)_gemtek_xr1710g(-ubi(15)?)?=y$' "$config_file"; then
 	profile="xr1710g"
 	forbidden_packages='(airoha-pon(firmware|manager)|airoha-ponctl|airoha-pond|luci-app-(pon|onu)|kmod-airoha-(xpon-en757x|pon-plugins|pon-dataplane|xpon-igmp|gpon-igmp|en7572|xpon|tod|en7581-pcm-spi))'
 	forbidden_build_config=""
@@ -58,6 +59,10 @@ if grep -Eq '^CONFIG_(TARGET_airoha_an7581_DEVICE|TARGET_DEVICE_airoha_an7581_DE
 		kmod-mt7996-firmware
 		kmod-mt7996e
 	)
+	if grep -Eq '^CONFIG_(TARGET_airoha_an7581_DEVICE|TARGET_DEVICE_airoha_an7581_DEVICE)_gemtek_xr1710g-ubi15=y$' "$config_file"; then
+		legacy_ubi15=1
+		required_packages+=(ds-lite kmod-ip6-tunnel)
+	fi
 	manifest_required_packages=("${required_packages[@]}")
 	forbidden_kernel='CONFIG_(AIROHA_PON_COMPAT|PTP_1588_CLOCK_AIROHA_TOD)=(y|m)'
 	required_kernel='CONFIG_NET_AIROHA_NPU=y'
@@ -103,6 +108,10 @@ if [[ -n "$forbidden_build_config" ]] && grep -Fqx "$forbidden_build_config" "$c
 fi
 
 if [[ -n "$kernel_config" ]]; then
+	if [[ "$legacy_ubi15" == 1 ]] && ! grep -Eq '^CONFIG_IPV6_TUNNEL=(y|m)$' "$kernel_config"; then
+		echo "xr1710g UBI 1.5 kernel lacks the DS-Lite IPv6 tunnel driver" >&2
+		failed=1
+	fi
 	if grep -En "^${forbidden_kernel}$" "$kernel_config"; then
 		echo "$profile kernel enables a forbidden subsystem" >&2
 		failed=1
@@ -117,7 +126,7 @@ if [[ -n "$kernel_config" ]]; then
 	done < <(tr '|' '\n' <<<"$required_kernel")
 fi
 
-for manifest in "${manifests[@]}"; do
+for manifest in ${manifests[@]+"${manifests[@]}"}; do
 	if grep -En "^${forbidden_packages}([[:space:]]|$)" "$manifest"; then
 		echo "$profile manifest contains forbidden packages: $manifest" >&2
 		failed=1

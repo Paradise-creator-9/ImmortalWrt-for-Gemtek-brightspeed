@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/* Legacy chainloader layout; factory is the repacked EEPROM/MAC volume. */
+#include "an7581-xr1710g.dts"
+
+/ {
+	model = "Gemtek XR1710G (legacy UBI 1.5 layout, experimental)";
+	compatible = "gemtek,xr1710g-ubi15", "airoha,an7581", "airoha,en7581";
+	chosen {
+		bootargs = "console=ttyS0,115200 earlycon cpufreq.default_governor=powersave ubi.block=0,fit root=/dev/fit0 rootwait";
+	};
+};
+
+&spi_nand {
+	partitions {
+		partition@0 {
+			/* Preserve vendor provisioning data during firmware experiments. */
+			read-only;
+		};
+		partition@700000 {
+			reg = <0x00700000 0x1d9c0000>;
+		};
+		/delete-node/ reserved_bmt@1be00000;
+		reserved_bmt@1e0c0000 {
+			label = "reserved_bmt";
+			reg = <0x1e0c0000 0x01f40000>;
+			read-only;
+		};
+	};
+};
