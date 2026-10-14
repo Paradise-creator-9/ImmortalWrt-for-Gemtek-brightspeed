@@ -265,6 +265,21 @@ define Device/gemtek_xr1710g-ubi
 endef
 TARGET_DEVICES += gemtek_xr1710g-ubi
 
+# Keep the legacy 1.5 layout separate from both existing XR1710G targets.
+define Device/gemtek_xr1710g-ubi15
+  DEVICE_DTS := an7581-gemtek-xr1710g-ubi15
+  $(call Device/gemtek_xr1710g-common)
+  DEVICE_VARIANT := Legacy UBI 1.5 (experimental)
+  SUPPORTED_DEVICES := gemtek,xr1710g-ubi15
+  DEVICE_COMPAT_VERSION := 1.5
+  DEVICE_COMPAT_MESSAGE := Experimental legacy UBI 1.5 image. Requires vendor at 0, \
+       chainloader at 0x600000, ubi at 0x700000 size 0x1d9c0000, and repacked factory data. \
+       No automatic migration from another board ID is supported.
+  IMAGE_SIZE := 131072k
+  IMAGE/sysupgrade.itb := append-kernel | fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata | check-size
+endef
+TARGET_DEVICES += gemtek_xr1710g-ubi15
+
 define Device/gemtek_xg2010g-common
   DEVICE_VENDOR := Gemtek
   DEVICE_COMPAT_VERSION := 2.0

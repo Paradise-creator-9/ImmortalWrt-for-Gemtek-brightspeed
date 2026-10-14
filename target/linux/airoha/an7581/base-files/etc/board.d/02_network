@@ -39,7 +39,7 @@ an7581_setup_interfaces()
 	gemtek,w1700k-ubi)
 		gemtek_setup_interfaces
 		;;
-	gemtek,xr1710g|\
+	gemtek,xr1710g-ubi15|gemtek,xr1710g|\
 	gemtek,xr1710g-ubi)
 		ucidef_set_hostname "XR1710G"
 		gemtek_setup_interfaces

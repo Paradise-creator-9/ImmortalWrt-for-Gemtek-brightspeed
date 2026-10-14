@@ -8,6 +8,9 @@
 board_config_update
 
 case "$(board_name)" in
+	gemtek,xr1710g-ubi15)
+		ucidef_set_compat_version "1.5"
+		;;
 	gemtek,w1700k-ubi|\
 	gemtek,xr1710g-ubi|\
 	gemtek,xg2010g|\

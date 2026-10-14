@@ -41,6 +41,10 @@ platform_check_image() {
 	[ "$#" -gt 1 ] && return 1
 
 	case "$board" in
+	gemtek,xr1710g-ubi15)
+		echo "Experimental UBI 1.5 build: sysupgrade remains disabled pending validation." >&2
+		return 1
+		;;
 	nokia,xg-040g-md)
 		nand_do_platform_check "$board" "$1"
 		return $?
@@ -72,6 +76,10 @@ platform_do_upgrade() {
 	local board=$(board_name)
 
 	case "$board" in
+	gemtek,xr1710g-ubi15)
+		echo "Experimental UBI 1.5 build: sysupgrade remains disabled pending validation." >&2
+		return 1
+		;;
 		gemtek,xg2010g-ubi|\
 		gemtek,xg2010g|\
 		gemtek,xg2010g-2g-ubi|\

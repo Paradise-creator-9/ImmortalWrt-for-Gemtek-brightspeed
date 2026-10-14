@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - 1710.config
+          - 1710-ubi15.config
           - 2010.config
           - 2010-2g.config
       release_type:
@@ -63,6 +64,7 @@ jobs:
           echo "version_code=$version_code" >> $GITHUB_OUTPUT
           case '${{ inputs.config_seed }}' in
             1710.config) device_model=XR1710G ;;
+            1710-ubi15.config) device_model=XR1710G-UBI15-EXPERIMENTAL ;;
             2010.config) device_model=XG2010G ;;
             2010-2g.config) device_model=XG2010G-2G ;;
             *) echo "Unsupported config seed: ${{ inputs.config_seed }}" >&2; exit 1 ;;
@@ -73,7 +75,7 @@ jobs:
       - name: Setup build environment
         run: |
           sudo apt update
-          sudo apt install -y build-essential clang gcc g++ binutils bzip2 gawk gettext git libncurses-dev libssl-dev python3 python3-setuptools rsync unzip wget xsltproc zlib1g-dev file which perl sed make
+          sudo apt install -y build-essential clang gcc g++ binutils bzip2 gawk gettext git libncurses-dev libssl-dev python3 python3-setuptools rsync unzip wget xsltproc zlib1g-dev file which perl sed make device-tree-compiler
 
       - name: Install feeds
         run: |
@@ -83,6 +85,12 @@ jobs:
 
       - name: Apply feed patches
         run: FEED_PATCHES_STRICT=1 bash scripts/apply-feed-patches.sh
+
+      - name: Test diagnostic selection and upgrade guards
+        shell: bash
+        run: |
+          bash scripts/tests/test-gemtek-kernel-selection.sh
+          sh scripts/tests/test-xr1710g-ubi15-upgrade-guard.sh
 
       - name: Configure
         run: |
@@ -122,15 +130,25 @@ jobs:
             tail -150 build.log || true
           fi
 
+      - name: Collect kernel diagnostics
+        if: always()
+        shell: bash
+        run: bash scripts/collect-gemtek-kernel-diagnostics.sh
+
+      - name: Verify compiled legacy device tree
+        if: inputs.config_seed == '1710-ubi15.config'
+        shell: bash
+        run: bash scripts/check-xr1710g-ubi15-dtb.sh diagnostics/image-an7581-gemtek-xr1710g-ubi15.dtb
+
       - name: Verify device isolation
         shell: bash
         run: |
           bash scripts/check-firmware-artifacts.sh \
             --config .config \
             --directory bin/targets/airoha/an7581
-          kernel_config=$(find build_dir/target-aarch64_cortex-a53_musl/linux-airoha_an7581 -path '*/linux-*/.config' -print -quit)
+          kernel_config=diagnostics/kernel.config
           manifest=$(find bin/targets/airoha/an7581 -maxdepth 1 -type f -name '*manifest' -print -quit)
-          test -n "$kernel_config"
+          test -s "$kernel_config"
           test -n "$manifest"
           bash scripts/check-gemtek-profile-isolation.sh \
             --config .config \
@@ -158,6 +176,7 @@ jobs:
         with:
           name: gemtek-${{ inputs.config_seed }}-firmware
           path: |
+            diagnostics/
             build.log
             build-verbose.log
             bin/targets/airoha/an7581/*.itb
@@ -170,7 +189,7 @@ jobs:
         if: always()
 
       - name: Build release body
-        if: github.event.inputs.release_type != 'none'
+        if: github.event.inputs.release_type != 'none' && inputs.config_seed != '1710-ubi15.config'
         id: release_body
         env:
           RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
@@ -191,7 +210,7 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Create Release
-        if: github.event.inputs.release_type != 'none'
+        if: github.event.inputs.release_type != 'none' && inputs.config_seed != '1710-ubi15.config'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ format('{0}-{1}', steps.version.outputs.date, steps.version.outputs.repo_commit) }}

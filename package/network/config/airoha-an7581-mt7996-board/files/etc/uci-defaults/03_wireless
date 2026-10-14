@@ -12,7 +12,7 @@
 board=$(board_name)
 
 case "$board" in
-gemtek,xr1710g|\
+gemtek,xr1710g-ubi15|gemtek,xr1710g|\
 gemtek,xr1710g-ubi|\
 gemtek,w1700k-ubi)
 	for i in $(seq 1 20); do
